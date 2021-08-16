@@ -19,6 +19,12 @@ export class User {
   @Column()
   password: string;
 
+  @Column()
+  name: string;
+
+  @Column()
+  surname: string;
+
   @OneToOne(() => Quote, (quote) => quote.user)
   quote: Quote;
 
