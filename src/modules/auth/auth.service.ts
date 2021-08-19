@@ -1,32 +1,20 @@
-import {
-  BadRequestException,
-  ConflictException,
-  NotFoundException,
-} from '@nestjs/common';
 import { Injectable } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import { InjectRepository } from '@nestjs/typeorm';
 import { User } from 'src/entities/user.entity';
-import { Repository } from 'typeorm';
 import { LoginDto } from './dto/login.dto';
-import { RegisterDto } from './dto/register.dto';
 import * as bcrypt from 'bcrypt';
+import { UsersService } from '../user/users.service';
+import { UserNoIdDto } from '../user/dto/userNoId';
 
 @Injectable()
 export class AuthService {
   constructor(
-    @InjectRepository(User) private usersRepository: Repository<User>,
+    private usersService: UsersService,
     private jwtService: JwtService,
   ) {}
 
   async validateUser(username: string, pass: string): Promise<any> {
-    const user = await this.usersRepository
-      .findOneOrFail({
-        where: { username: username },
-      })
-      .catch(() => {
-        throw new NotFoundException();
-      });
+    const user = await this.usersService.getUserByUsername(username);
 
     const isMatch = await bcrypt.compare(pass, user.password);
 
@@ -44,14 +32,10 @@ export class AuthService {
     };
   }
 
-  async postRegister(body: RegisterDto): Promise<User> {
+  async postRegister(body: UserNoIdDto): Promise<User> {
     const salt = await bcrypt.genSalt();
     body.password = await bcrypt.hash(body.password, salt);
-    const newUser = this.usersRepository.create(body);
-    const result = await this.usersRepository.save(newUser).catch((err) => {
-      if (err.code === '23505') throw new ConflictException();
-      throw new BadRequestException();
-    });
+    const result = await this.usersService.createUser(body);
     delete result['password'];
     return result;
   }
