@@ -10,6 +10,7 @@ import { User } from 'src/entities/user.entity';
 import { Repository } from 'typeorm';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
+import * as bcrypt from 'bcrypt';
 
 @Injectable()
 export class AuthService {
@@ -26,7 +27,10 @@ export class AuthService {
       .catch(() => {
         throw new NotFoundException();
       });
-    if (user && user.password === pass) {
+
+    const isMatch = await bcrypt.compare(pass, user.password);
+
+    if (user && isMatch) {
       const { password, ...result } = user;
       return result;
     }
@@ -40,11 +44,15 @@ export class AuthService {
     };
   }
 
-  postRegister(body: RegisterDto): Promise<User> {
+  async postRegister(body: RegisterDto): Promise<User> {
+    const salt = await bcrypt.genSalt();
+    body.password = await bcrypt.hash(body.password, salt);
     const newUser = this.usersRepository.create(body);
-    return this.usersRepository.save(newUser).catch((err) => {
+    const result = await this.usersRepository.save(newUser).catch((err) => {
       if (err.code === '23505') throw new ConflictException();
       throw new BadRequestException();
     });
+    delete result['password'];
+    return result;
   }
 }
