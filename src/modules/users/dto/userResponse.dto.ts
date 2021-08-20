@@ -1,4 +1,4 @@
-export class UserNoPasswordDto {
+export class UserResponseDto {
   id: number;
   username: string;
   name: string;
