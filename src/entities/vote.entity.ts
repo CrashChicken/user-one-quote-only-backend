@@ -1,4 +1,11 @@
-import { Entity, ManyToOne, Column, PrimaryGeneratedColumn } from 'typeorm';
+import {
+  Entity,
+  ManyToOne,
+  Column,
+  PrimaryGeneratedColumn,
+  CreateDateColumn,
+  UpdateDateColumn,
+} from 'typeorm';
 import { Quote } from './quote.entity';
 import { User } from './user.entity';
 
@@ -15,4 +22,10 @@ export class Vote {
 
   @Column({ type: 'smallint' })
   vote: number;
+
+  @CreateDateColumn()
+  createdAt: Date;
+
+  @UpdateDateColumn()
+  updatedAt: Date;
 }

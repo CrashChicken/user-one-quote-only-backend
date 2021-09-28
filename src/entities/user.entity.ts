@@ -4,6 +4,8 @@ import {
   Column,
   OneToMany,
   OneToOne,
+  CreateDateColumn,
+  UpdateDateColumn,
 } from 'typeorm';
 import { Quote } from './quote.entity';
 import { Vote } from './vote.entity';
@@ -20,10 +22,16 @@ export class User {
   password: string;
 
   @Column()
-  name: string;
+  firstName: string;
 
   @Column()
-  surname: string;
+  lastName: string;
+
+  @CreateDateColumn()
+  createdAt: Date;
+
+  @UpdateDateColumn()
+  updatedAt: Date;
 
   @OneToOne(() => Quote, (quote) => quote.user)
   quote: Quote;
