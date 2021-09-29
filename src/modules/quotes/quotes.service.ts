@@ -66,20 +66,35 @@ export class QuotesService {
     });
   }
 
-  async getQuoteVoteSum(userId: number): Promise<any> {
-    await this.getQuoteByUserId(userId);
+  async getQuoteVoteSum(userId: number): Promise<QuoteResponseDto> {
     const userQuote = await getManager().query(
-      'SELECT quote.id AS quoteId, quote.quote, quote."createdAt", "user".id AS userId, "user".username, "user"."firstName", "user"."lastName", SUM(vote.vote) AS karma FROM quote LEFT JOIN vote ON quote.id = vote."quoteId" JOIN "user" ON quote."userId" = "user".id WHERE "user".id = $1 GROUP BY "user".id, quote.id ORDER BY karma',
+      'SELECT quote.id AS quoteId, quote.quote, quote."createdAt", "user".id AS userId, "user".username, "user"."firstName", "user"."lastName", SUM(vote.vote) AS karma FROM quote LEFT JOIN vote ON quote.id = vote."quoteId" JOIN "user" ON quote."userId" = "user".id WHERE "user".id = $1 GROUP BY "user".id, quote.id',
+      [userId],
+    );
+    return this.formatQuoteResponse(userQuote)[0];
+  }
+
+  async getLikes(userId: number) {
+    const getUserLikes = await getManager().query(
+      'SELECT quote."userId" FROM vote JOIN quote ON vote."quoteId" = quote.id WHERE vote."userId" = $1',
       [userId],
     );
 
-    const userVotes = await getManager().query(
-      'SELECT quote.id AS quoteId, quote.quote, quote."createdAt", "user".id AS userId, "user".username, "user"."firstName", "user"."lastName", SUM(vote.vote) AS karma FROM quote LEFT JOIN vote ON quote.id = vote."quoteId" JOIN "user" ON quote."userId" = "user".id WHERE vote."userId" = $1 GROUP BY "user".id, quote.id ORDER BY karma',
-      [userId],
+    const result = await Promise.all(
+      getUserLikes.map(async (value) => {
+        return await this.getQuoteVoteSum(value.userId);
+      }),
     );
+
+    return result;
+  }
+
+  async getUserInfo(userId: number): Promise<any> {
+    const user = await this.getQuoteByUserId(userId);
+
     const result = {
-      quote: this.formatQuoteResponse(userQuote)[0],
-      votes: this.formatQuoteResponse(userVotes),
+      quote: await this.getQuoteVoteSum(userId),
+      votes: await this.getLikes(userId),
     };
     return result;
   }
@@ -149,7 +164,7 @@ export class QuotesService {
     await this.votesRepository.delete({ quote, user });
 
     const userQuote = await getManager().query(
-      'SELECT quote.id AS quoteId, quote.quote, quote."createdAt", "user".id AS userId, "user".username, "user"."firstName", "user"."lastName", SUM(vote.vote) AS karma FROM quote LEFT JOIN vote ON quote.id = vote."quoteId" JOIN "user" ON quote."userId" = "user".id WHERE "user".id = $1 GROUP BY "user".id, quote.id ORDER BY karma',
+      'SELECT quote.id AS quoteId, quote.quote, quote."createdAt", "user".id AS userId, "user".username, "user"."firstName", "user"."lastName", SUM(vote.vote) AS karma FROM quote LEFT JOIN vote ON quote.id = vote."quoteId" JOIN "user" ON quote."userId" = "user".id WHERE "user".id = $1 GROUP BY "user".id, quote.id',
       [quoteUserId],
     );
 
@@ -158,10 +173,19 @@ export class QuotesService {
 
   async listQuoteVoteSum(query): Promise<QuoteResponseDto[]> {
     let sort = 'karma';
-    //if (query.sort === 'newest') sort = 'quote."createdAt"';
+    if (query.sort === 'newest') sort = 'quote."createdAt"';
+
+    let page = Number(query.page);
+    if (isNaN(page)) throw new BadRequestException();
+    if (page <= 0) throw new BadRequestException();
+
+    page = 9 * (page - 1);
 
     const list = await getManager().query(
-      'SELECT quote.id AS quoteId, quote.quote, quote."createdAt", "user".id AS userId, "user".username, "user"."firstName", "user"."lastName", SUM(vote.vote) AS karma FROM quote LEFT JOIN vote ON quote.id = vote."quoteId" JOIN "user" ON quote."userId" = "user".id GROUP BY "user".id, quote.id ORDER BY karma DESC',
+      'SELECT quote.id AS quoteId, quote.quote, quote."createdAt", "user".id AS userId, "user".username, "user"."firstName", "user"."lastName", SUM(vote.vote) AS karma FROM quote LEFT JOIN vote ON quote.id = vote."quoteId" JOIN "user" ON quote."userId" = "user".id GROUP BY "user".id, quote.id ORDER BY ' +
+        sort +
+        ' DESC LIMIT 9 OFFSET $1',
+      [page],
     );
     return this.formatQuoteResponse(list);
   }

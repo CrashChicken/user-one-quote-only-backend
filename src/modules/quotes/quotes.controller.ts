@@ -43,7 +43,7 @@ export class QuotesController {
 
   @Get('/user/:userId')
   getUserQuote(@Param('userId') userId: number): Promise<any> {
-    return this.quotesService.getQuoteVoteSum(userId);
+    return this.quotesService.getUserInfo(userId);
   }
 
   @UseGuards(JwtAuthGuard)
