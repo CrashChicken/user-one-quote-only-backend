@@ -10,12 +10,10 @@ import {
   Request,
   UseGuards,
 } from '@nestjs/common';
-import { Quote } from 'src/entities/quote.entity';
-import { Vote } from 'src/entities/vote.entity';
-import { DeleteResult } from 'typeorm';
+import { Quote } from '../../entities/quote.entity';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
-import { QuoteRequestDto } from './dto/quoteRequest.dto';
-import { QuoteResponseDto } from './dto/quoteResponse.dto';
+import { QuoteReqDto } from './dto/quoteReq.dto';
+import { QuoteResDto } from './dto/quoteRes.dto';
 import { VoteCheckDto } from './dto/voteCheck.dto';
 import { QuotesService } from './quotes.service';
 
@@ -31,13 +29,13 @@ export class QuotesController {
 
   @UseGuards(JwtAuthGuard)
   @Post('myquote')
-  createMyQuote(@Request() req, @Body() body: QuoteRequestDto): Promise<Quote> {
+  createMyQuote(@Request() req, @Body() body: QuoteReqDto): Promise<Quote> {
     return this.quotesService.createQuote(req.user.userId, body.quote);
   }
 
   @UseGuards(JwtAuthGuard)
   @Put('myquote')
-  updateMyQuote(@Request() req, @Body() body: QuoteRequestDto): Promise<Quote> {
+  updateMyQuote(@Request() req, @Body() body: QuoteReqDto): Promise<Quote> {
     return this.quotesService.updateQuote(req.user.userId, body.quote);
   }
 
@@ -51,7 +49,7 @@ export class QuotesController {
   upvoteQuote(
     @Request() req,
     @Param('userId') userId: number,
-  ): Promise<QuoteResponseDto> {
+  ): Promise<QuoteResDto> {
     return this.quotesService.upvoteQuote(req.user.userId, userId);
   }
 
@@ -60,7 +58,7 @@ export class QuotesController {
   downvoteQuote(
     @Request() req,
     @Param('userId') userId: number,
-  ): Promise<QuoteResponseDto> {
+  ): Promise<QuoteResDto> {
     return this.quotesService.downvoteQuote(req.user.userId, userId);
   }
 
@@ -69,7 +67,7 @@ export class QuotesController {
   deleteVote(
     @Request() req,
     @Param('userId') userId: number,
-  ): Promise<QuoteResponseDto> {
+  ): Promise<QuoteResDto> {
     return this.quotesService.deleteVote(req.user.userId, userId);
   }
 

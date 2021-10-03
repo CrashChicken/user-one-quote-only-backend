@@ -5,11 +5,11 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Quote } from 'src/entities/quote.entity';
-import { Vote } from 'src/entities/vote.entity';
-import { DeleteResult, getManager, Repository } from 'typeorm';
+import { Quote } from '../..//entities/quote.entity';
+import { Vote } from '../../entities/vote.entity';
+import { getManager, Repository } from 'typeorm';
 import { UsersService } from '../users/users.service';
-import { QuoteResponseDto } from './dto/quoteResponse.dto';
+import { QuoteResDto } from './dto/quoteRes.dto';
 import { VoteCheckDto } from './dto/voteCheck.dto';
 
 @Injectable()
@@ -20,7 +20,7 @@ export class QuotesService {
     private usersService: UsersService,
   ) {}
 
-  formatQuoteResponse(list: any[]): QuoteResponseDto[] {
+  formatQuoteResponse(list: any[]): QuoteResDto[] {
     let result = [];
     list.forEach((element) => {
       result.push({
@@ -28,9 +28,9 @@ export class QuotesService {
         quote: element.quote,
         karma: element.karma == null ? 0 : parseInt(element.karma),
         createdAt: element.createdAt,
+        updatedAt: element.updatedAt,
         user: {
           id: element.userid,
-          username: element.username,
           firstName: element.firstName,
           lastName: element.lastName,
         },
@@ -66,9 +66,9 @@ export class QuotesService {
     });
   }
 
-  async getQuoteVoteSum(userId: number): Promise<QuoteResponseDto> {
+  async getQuoteVoteSum(userId: number): Promise<QuoteResDto> {
     const userQuote = await getManager().query(
-      'SELECT quote.id AS quoteId, quote.quote, quote."createdAt", "user".id AS userId, "user".username, "user"."firstName", "user"."lastName", SUM(vote.vote) AS karma FROM quote LEFT JOIN vote ON quote.id = vote."quoteId" JOIN "user" ON quote."userId" = "user".id WHERE "user".id = $1 GROUP BY "user".id, quote.id',
+      'SELECT quote.id AS quoteId, quote.quote, quote."createdAt", quote."updatedAt", "user".id AS userId, "user"."firstName", "user"."lastName", SUM(vote.vote) AS karma FROM quote LEFT JOIN vote ON quote.id = vote."quoteId" JOIN "user" ON quote."userId" = "user".id WHERE "user".id = $1 GROUP BY "user".id, quote.id',
       [userId],
     );
     return this.formatQuoteResponse(userQuote)[0];
@@ -103,7 +103,7 @@ export class QuotesService {
     voteUserId: number,
     quoteUserId: number,
     vote: number,
-  ): Promise<QuoteResponseDto> {
+  ): Promise<QuoteResDto> {
     const quote = await this.getQuoteByUserId(quoteUserId);
     const user = await this.usersService.getUserById(voteUserId);
     const newVote = this.votesRepository.create({
@@ -118,24 +118,18 @@ export class QuotesService {
     delete result.user.password;
 
     const userQuote = await getManager().query(
-      'SELECT quote.id AS quoteId, quote.quote, quote."createdAt", "user".id AS userId, "user".username, "user"."firstName", "user"."lastName", SUM(vote.vote) AS karma FROM quote LEFT JOIN vote ON quote.id = vote."quoteId" JOIN "user" ON quote."userId" = "user".id WHERE "user".id = $1 GROUP BY "user".id, quote.id ORDER BY karma',
+      'SELECT quote.id AS quoteId, quote.quote, quote."createdAt", quote."updatedAt", "user".id AS userId, "user"."firstName", "user"."lastName", SUM(vote.vote) AS karma FROM quote LEFT JOIN vote ON quote.id = vote."quoteId" JOIN "user" ON quote."userId" = "user".id WHERE "user".id = $1 GROUP BY "user".id, quote.id ORDER BY karma',
       [quoteUserId],
     );
 
     return this.formatQuoteResponse(userQuote)[0];
   }
 
-  upvoteQuote(
-    voteUserId: number,
-    quoteUserId: number,
-  ): Promise<QuoteResponseDto> {
+  upvoteQuote(voteUserId: number, quoteUserId: number): Promise<QuoteResDto> {
     return this.voteQuote(voteUserId, quoteUserId, 1);
   }
 
-  downvoteQuote(
-    voteUserId: number,
-    quoteUserId: number,
-  ): Promise<QuoteResponseDto> {
+  downvoteQuote(voteUserId: number, quoteUserId: number): Promise<QuoteResDto> {
     return this.voteQuote(voteUserId, quoteUserId, -1);
   }
 
@@ -158,20 +152,20 @@ export class QuotesService {
   async deleteVote(
     voteUserId: number,
     quoteUserId: number,
-  ): Promise<QuoteResponseDto> {
+  ): Promise<QuoteResDto> {
     const quote = await this.getQuoteByUserId(quoteUserId);
     const user = await this.usersService.getUserById(voteUserId);
     await this.votesRepository.delete({ quote, user });
 
     const userQuote = await getManager().query(
-      'SELECT quote.id AS quoteId, quote.quote, quote."createdAt", "user".id AS userId, "user".username, "user"."firstName", "user"."lastName", SUM(vote.vote) AS karma FROM quote LEFT JOIN vote ON quote.id = vote."quoteId" JOIN "user" ON quote."userId" = "user".id WHERE "user".id = $1 GROUP BY "user".id, quote.id',
+      'SELECT quote.id AS quoteId, quote.quote, quote."createdAt", quote."updatedAt", quote."updatedAt", "user".id AS userId, "user"."firstName", "user"."lastName", SUM(vote.vote) AS karma FROM quote LEFT JOIN vote ON quote.id = vote."quoteId" JOIN "user" ON quote."userId" = "user".id WHERE "user".id = $1 GROUP BY "user".id, quote.id',
       [quoteUserId],
     );
 
     return this.formatQuoteResponse(userQuote)[0];
   }
 
-  async listQuoteVoteSum(query): Promise<QuoteResponseDto[]> {
+  async listQuoteVoteSum(query): Promise<QuoteResDto[]> {
     let sort = 'karma';
     if (query.sort === 'newest') sort = 'quote."createdAt"';
 
@@ -182,7 +176,7 @@ export class QuotesService {
     page = 9 * (page - 1);
 
     const list = await getManager().query(
-      'SELECT quote.id AS quoteId, quote.quote, quote."createdAt", "user".id AS userId, "user".username, "user"."firstName", "user"."lastName", SUM(vote.vote) AS karma FROM quote LEFT JOIN vote ON quote.id = vote."quoteId" JOIN "user" ON quote."userId" = "user".id GROUP BY "user".id, quote.id ORDER BY ' +
+      'SELECT quote.id AS quoteId, quote.quote, quote."createdAt", quote."updatedAt", "user".id AS userId, "user"."firstName", "user"."lastName", SUM(vote.vote) AS karma FROM quote LEFT JOIN vote ON quote.id = vote."quoteId" JOIN "user" ON quote."userId" = "user".id GROUP BY "user".id, quote.id ORDER BY ' +
         sort +
         ' DESC LIMIT 9 OFFSET $1',
       [page],
