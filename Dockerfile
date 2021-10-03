@@ -1,16 +1,6 @@
-FROM node:16-alpine As development
-WORKDIR /usr/src/app
-COPY package*.json ./
-RUN npm install --only=development
+FROM node:16-alpine
+WORKDIR /app
 COPY . .
-EXPOSE 3001
-RUN npm run build
-
-FROM node:16-alpine as production
-WORKDIR /usr/src/app
-COPY package*.json ./
-RUN npm install --only=production
-COPY . .
-COPY --from=development /usr/src/app/dist ./dist
-EXPOSE 3001
-CMD ["node", "dist/main"]
+RUN npm install --only=prod
+EXPOSE 3000
+CMD ["npm", "run", "start:prod"]

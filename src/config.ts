@@ -1,5 +1,5 @@
 export const appConfig = {
-  port: 3001,
+  port: 300,
 };
 
 export const jwtConfig = {
