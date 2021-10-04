@@ -166,21 +166,25 @@ export class QuotesService {
   }
 
   async listQuoteVoteSum(query): Promise<QuoteResDto[]> {
-    let sort = 'karma';
-    if (query.sort === 'newest') sort = 'quote."createdAt"';
-
     let page = Number(query.page);
     if (isNaN(page)) throw new BadRequestException();
     if (page <= 0) throw new BadRequestException();
 
     page = 9 * (page - 1);
 
-    const list = await getManager().query(
-      'SELECT quote.id AS quoteId, quote.quote, quote."createdAt", quote."updatedAt", "user".id AS userId, "user"."firstName", "user"."lastName", SUM(vote.vote) AS karma FROM quote LEFT JOIN vote ON quote.id = vote."quoteId" JOIN "user" ON quote."userId" = "user".id GROUP BY "user".id, quote.id ORDER BY ' +
-        sort +
-        ' DESC LIMIT 9 OFFSET $1',
-      [page],
-    );
+    let list;
+
+    if (query.sort === 'karma') {
+      list = await getManager().query(
+        'SELECT quote.id AS quoteId, quote.quote, quote."createdAt", quote."updatedAt", "user".id AS userId, "user"."firstName", "user"."lastName", SUM(vote.vote) AS karma FROM quote LEFT JOIN vote ON quote.id = vote."quoteId" JOIN "user" ON quote."userId" = "user".id GROUP BY "user".id, quote.id ORDER BY COALESCE(SUM(vote.vote), 0) DESC LIMIT 9 OFFSET $1',
+        [page],
+      );
+    } else {
+      list = await getManager().query(
+        'SELECT quote.id AS quoteId, quote.quote, quote."createdAt", quote."updatedAt", "user".id AS userId, "user"."firstName", "user"."lastName", SUM(vote.vote) AS karma FROM quote LEFT JOIN vote ON quote.id = vote."quoteId" JOIN "user" ON quote."userId" = "user".id GROUP BY "user".id, quote.id ORDER BY quote."createdAt" DESC LIMIT 9 OFFSET $1',
+        [page],
+      );
+    }
     return this.formatQuoteResponse(list);
   }
 }
