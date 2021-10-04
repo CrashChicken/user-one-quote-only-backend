@@ -5,10 +5,11 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { User } from 'src/entities/user.entity';
+import { User } from '../../entities/user.entity';
 import { Repository } from 'typeorm';
 import { UserNoIdDto } from './dto/userNoId';
-import { UserNoPasswordDto } from './dto/userNoPassword.dto';
+import { UserResDto } from './dto/userRes.dto';
+import * as bcrypt from 'bcrypt';
 
 @Injectable()
 export class UsersService {
@@ -21,16 +22,16 @@ export class UsersService {
     });
   }
 
-  async getUserByIdNoPass(id: number): Promise<UserNoPasswordDto> {
+  async getUserByIdNoPass(id: number): Promise<UserResDto> {
     const user = await this.getUserById(id);
     delete user['password'];
     return user;
   }
 
-  getUserByUsername(username: string): Promise<User> {
+  getUserByEmail(email: string): Promise<User> {
     return this.usersRepository
       .findOneOrFail({
-        where: { username: username },
+        where: { email },
       })
       .catch(() => {
         throw new NotFoundException();
@@ -45,13 +46,11 @@ export class UsersService {
     });
   }
 
-  async updateUserPassword(
-    id: number,
-    pass: string,
-  ): Promise<UserNoPasswordDto> {
+  async updateUserPassword(id: number, pass: string): Promise<UserResDto> {
     if (pass) {
       const user = await this.getUserById(id);
-      user.password = pass;
+      const salt = await bcrypt.genSalt();
+      user.password = await bcrypt.hash(pass, salt);
       const result = await this.usersRepository.save(user);
       delete result['password'];
       return result;
